@@ -1,5 +1,5 @@
 /**
- * In this small Demo Application, I've tried to cover all the basic scenarios used by a developed on daily basis in our industry.
+ * In this small Demo Application, I've tried to cover all the basic scenarios used by a developer on daily basis in our industry.
  */
 
 import React from 'react';
