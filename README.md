@@ -6,22 +6,20 @@ Please check the demo from Demo folder. This project uses below libraries:
 1. React navigation
 2. Styled Components
 
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
-  ScrollView,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   TouchableOpacity,
   StyleSheet,
-  LayoutRectangle,
-  UIManager,
-  findNodeHandle,
 } from 'react-native';
+
+import {
+  KeyboardProvider,
+  KeyboardAwareScrollView,
+  useKeyboardAnimation,
+} from 'react-native-keyboard-controller';
 
 const INPUTS = [
   'First Name',
@@ -34,56 +32,18 @@ const INPUTS = [
   'Zip Code',
 ];
 
-export default function RegisterScreen() {
-  const scrollRef = useRef<ScrollView>(null);
-  const inputRefs = useRef<Array<TextInput | null>>([]);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-
-  /** Keyboard listeners */
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () =>
-      setKeyboardVisible(true)
-    );
-    const hideSub = Keyboard.addListener('keyboardDidHide', () =>
-      setKeyboardVisible(false)
-    );
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
-  /** Scroll to focused input */
-  const scrollToInput = (index: number) => {
-    const input = inputRefs.current[index];
-    const scroll = scrollRef.current;
-
-    if (!input || !scroll) return;
-
-    const nodeHandle = findNodeHandle(input);
-    if (!nodeHandle) return;
-
-    UIManager.measureLayout(
-      nodeHandle,
-      findNodeHandle(scroll)!,
-      () => {},
-      (_x, y) => {
-        scroll.scrollTo({ y: y - 20, animated: true });
-      }
-    );
-  };
+function Screen() {
+  const scrollRef = useRef<KeyboardAwareScrollView>(null);
+  const { height } = useKeyboardAnimation();
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
-    >
-      <ScrollView
+    <>
+      {/* FORM */}
+      <KeyboardAwareScrollView
         ref={scrollRef}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        bottomOffset={120}
       >
         <Text style={styles.title}>Register Form</Text>
 
@@ -91,41 +51,51 @@ export default function RegisterScreen() {
           <View key={index} style={styles.inputWrapper}>
             <Text style={styles.label}>{label}</Text>
             <TextInput
-              ref={(ref) => (inputRefs.current[index] = ref)}
               style={styles.input}
               placeholder={label}
-              onFocus={() => scrollToInput(index)}
-              returnKeyType="next"
+              onFocus={() => {
+                scrollRef.current?.scrollToFocusedInput();
+              }}
             />
           </View>
         ))}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
-      {/* Footer when keyboard is hidden */}
-      {!keyboardVisible && (
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.okButton}>
-            <Text style={styles.buttonText}>OK</Text>
-          </TouchableOpacity>
+      {/* OK BUTTON – STICKS TO KEYBOARD */}
+      <View
+        style={[
+          styles.keyboardButton,
+          {
+            transform: [{ translateY: -height.value }],
+          },
+        ]}
+      >
+        <TouchableOpacity style={styles.okButton}>
+          <Text style={styles.buttonText}>OK</Text>
+        </TouchableOpacity>
+      </View>
 
-          <TouchableOpacity style={styles.cancelButton}>
-            <Text style={styles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Floating OK when keyboard is visible */}
-      {keyboardVisible && (
-        <View style={styles.floatingOk}>
-          <TouchableOpacity style={styles.okButton}>
-            <Text style={styles.buttonText}>OK</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </KeyboardAvoidingView>
+      {/* FOOTER (VISIBLE WHEN KEYBOARD CLOSED) */}
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.cancelButton}>
+          <Text style={styles.buttonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 }
-------------
+
+export default function RegisterScreen() {
+  return (
+    <KeyboardProvider>
+      <View style={styles.container}>
+        <Screen />
+      </View>
+    </KeyboardProvider>
+  );
+}
+
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -133,7 +103,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 140,
+    paddingBottom: 200,
   },
   title: {
     fontSize: 22,
@@ -154,21 +124,21 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 12,
   },
+  keyboardButton: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: '#eee',
+  },
   footer: {
     padding: 16,
     borderTopWidth: 1,
     borderColor: '#eee',
     backgroundColor: '#fff',
-  },
-  floatingOk: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: Platform.OS === 'ios' ? 20 : 0,
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderColor: '#eee',
   },
   okButton: {
     height: 48,
@@ -176,7 +146,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
   cancelButton: {
     height: 48,
